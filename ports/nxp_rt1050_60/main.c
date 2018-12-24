@@ -567,7 +567,7 @@ HAL_StatusTypeDef HAL_Init(void)
 #endif
 
 #if defined(__CC_ARM)
-	#define STACK_SIZE	(0x2000)
+	#define STACK_SIZE	(0x3000)
 	uint32_t  _ram_start = RAM_START, ram_end = RAM_END, _estack = 0x6000, _heap_end = RAM_END;
 	extern unsigned int Image$$MPY_HEAP_START$$Base;
 	uint32_t _heap_start = (uint32_t) &Image$$MPY_HEAP_START$$Base;

@@ -46,7 +46,7 @@ processor_version: 0.0.3
 #include "fsl_common.h"
 #include "fsl_iomuxc.h"
 #include "pin_mux.h"
-
+#include "fsl_gpio.h"
 /*
  * TEXT BELOW IS USED AS SETTING FOR TOOLS *************************************
 BOARD_InitPins:
@@ -58,6 +58,8 @@ BOARD_InitPins:
     pull_keeper_select: Keeper, pull_keeper_enable: Enable, pull_up_down_config: Pull_Down_100K_Ohm, hysteresis_enable: Disable}
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS ***********
  */
+
+
 
 /*FUNCTION**********************************************************************
  *
@@ -283,7 +285,31 @@ void BOARD_InitPins(void) {
       IOMUXC_GPIO_AD_B1_15_CSI_DATA02,        /* GPIO_AD_B1_15 is configured as CSI_DATA02 */
       0U);                                    /* Software Input On Field: Input Path is determined by functionality */
 
+ CLOCK_EnableClock(kCLOCK_Iomuxc);           /* iomuxc clock (iomuxc_clk_enable): 0x03u */
 
+  IOMUXC_SetPinMux(
+      IOMUXC_GPIO_EMC_19_LPUART4_TX,        /* GPIO_AD_B0_12 is configured as LPUART1_TX */
+      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
+  IOMUXC_SetPinMux(
+      IOMUXC_GPIO_EMC_20_LPUART4_RX,        /* GPIO_AD_B0_13 is configured as LPUART1_RX */
+      0U);                                    /* Software Input On Field: Input Path is determined by functionality */
+	
+  IOMUXC_SetPinConfig(
+      IOMUXC_GPIO_EMC_20_LPUART4_RX,        /* GPIO_AD_B0_12 PAD functional properties : */
+      0x10B0u);                               /* Slew Rate Field: Slow Slew Rate
+                                                 Drive Strength Field: R0/6
+                                                 Speed Field: medium(100MHz)
+                                                 Open Drain Enable Field: Open Drain Disabled
+                                                 Pull / Keep Enable Field: Pull/Keeper Enabled
+                                                 Pull / Keep Select Field: Keeper
+                                                 Pull Up / Down Config. Field: 100K Ohm Pull Down
+                                                 Hyst. Enable Field: Hysteresis Disabled */
+  IOMUXC_SetPinConfig(
+      IOMUXC_GPIO_AD_B0_13_LPUART1_RX,        /* GPIO_AD_B0_13 PAD functional properties : */
+      0x10B0u);                               /* Slew Rate Field: Slow Slew Rate
+                                                 Drive Strength Field: R0/6
+                                                 Speed Field: medium(100MHz)
+                                                 Open Drain Enable Field: Open Drain Disabled*/
 //  IOMUXC_SetPinMux(
 //      IOMUXC_GPIO_B1_15_GPIO2_IO31,           /* GPIO_B1_15 is configured as GPIO2_IO31 */
 //      0U);   
@@ -301,7 +327,24 @@ void BOARD_InitPins(void) {
 //                                                 Pull / Keep Select Field: Keeper
 //                                                 Pull Up / Down Config. Field: 22K Ohm Pull Up
 //                                                 Hyst. Enable Field: Hysteresis Disabled */
-//	  
+//
+		gpio_pin_config_t gpio_config;
+	
+	//Initial iMx RT1052's GPIO for M8266WIFI_SPI_nCS
+  IOMUXC_SetPinMux(IOMUXC_GPIO_B1_08_GPIO2_IO24, 0);
+	IOMUXC_SetPinConfig(IOMUXC_GPIO_B1_08_GPIO2_IO24, 0xB069);  // 0xB069=b0| 10|11 0|000 01|10 1|00|1 -> Hysteresis Disabled, 100KOhm Pullup, pull enabled, 100MHz, R0/5=52, Fast Slew Rate
+	gpio_config.direction 			= kGPIO_DigitalOutput;				// Output
+	gpio_config.interruptMode	  =	kGPIO_NoIntmode;						// NO Interrupt
+	gpio_config.outputLogic		  =	1;										  		// Initially High
+	GPIO_PinInit(GPIO2, 24, &gpio_config); 	        						// Initialise the GPIO	
+	
+	//Initial iMx RT1052's GPIO for M8266WIFI_SPI_nRST
+  IOMUXC_SetPinMux(IOMUXC_GPIO_AD_B0_13_GPIO1_IO13, 0);			
+	IOMUXC_SetPinConfig(IOMUXC_GPIO_AD_B0_13_GPIO1_IO13, 0xB069);   // 0xB069=b0| 10|11 0|000 01|10 1|00|1 -> Hysteresis Disabled, 100KOhm Pullup, pull enabled, 100MHz, R0/5=52, Fast Slew Rate 
+	gpio_config.direction 			= kGPIO_DigitalOutput;				// Output
+	gpio_config.interruptMode	=	kGPIO_NoIntmode;							// NO Interrupt
+	gpio_config.outputLogic		=	1;														// Initially High
+	GPIO_PinInit(GPIO1, 13, &gpio_config); 	        						// Initialise the 
 }
 /*******************************************************************************
  * EOF

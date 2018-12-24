@@ -1,6 +1,6 @@
 #! armcc -E
 
-#define STACK_SIZE 0x2000
+#define STACK_SIZE 0x3000
 #define ROM_BASE	0x60000000
 #define IVT_BASE	0x60001000
 #define ITCM_SIZE	32*1024

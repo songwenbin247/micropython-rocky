@@ -502,19 +502,19 @@ void uart_irq_handler(void *base, void* pCtx) {
 	}
 }
 
-#define LPUART_IRQHANDLER_ENTRY(n) \
-void LPUART##n##_IRQHandler(void) { \
-	uart_irq_handler(LPUART##n, s_pUarts[n]); \
-}
+//#define LPUART_IRQHANDLER_ENTRY(n) \
+//void LPUART##n##_IRQHandler(void) { \
+//	uart_irq_handler(LPUART##n, s_pUarts[n]); \
+//}
 
-LPUART_IRQHANDLER_ENTRY(1)
-LPUART_IRQHANDLER_ENTRY(2)
-LPUART_IRQHANDLER_ENTRY(3)
-LPUART_IRQHANDLER_ENTRY(4)
-LPUART_IRQHANDLER_ENTRY(5)
-LPUART_IRQHANDLER_ENTRY(6)
-LPUART_IRQHANDLER_ENTRY(7)
-LPUART_IRQHANDLER_ENTRY(8)
+//LPUART_IRQHANDLER_ENTRY(1)
+//LPUART_IRQHANDLER_ENTRY(2)
+//LPUART_IRQHANDLER_ENTRY(3)
+//LPUART_IRQHANDLER_ENTRY(4)
+//LPUART_IRQHANDLER_ENTRY(5)
+//LPUART_IRQHANDLER_ENTRY(6)
+//LPUART_IRQHANDLER_ENTRY(7)
+//LPUART_IRQHANDLER_ENTRY(8)
 
 /******************************************************************************/
 /* Micro Python bindings                                                      */

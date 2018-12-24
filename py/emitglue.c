@@ -35,7 +35,8 @@
 #include "py/runtime0.h"
 #include "py/bc.h"
 
-#if MICROPY_DEBUG_VERBOSE // print debugging info
+//#if MICROPY_DEBUG_VERBOSE // print debugging info
+#if 0
 #define DEBUG_PRINT (1)
 #define WRITE_CODE (1)
 #define DEBUG_printf DEBUG_printf
