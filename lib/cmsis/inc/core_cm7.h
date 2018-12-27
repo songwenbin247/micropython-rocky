@@ -98,6 +98,11 @@
   #endif
 
 #elif defined ( __GNUC__ )
+   #define __ASM            __asm                                      /*!< asm keyword for GNU Compiler */
+   #define __INLINE         inline                                     /*!< inline keyword for GNU Compiler */
+   #define __STATIC_INLINE  static inline
+   #define __STATIC_FORCEINLINE  static __attribute__((always_inline)) inline
+	 
   #if defined (__VFP_FP__) && !defined(__SOFTFP__)
     #if defined (__FPU_PRESENT) && (__FPU_PRESENT == 1U)
       #define __FPU_USED       1U

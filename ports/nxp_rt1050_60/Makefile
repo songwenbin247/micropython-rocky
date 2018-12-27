@@ -1,6 +1,6 @@
 # Select the board to build for: if not given on the command line,
 # then default to PYBV10.
-BOARD ?= imxrtevk105x
+BOARD ?= omvrt1
 ifeq ($(wildcard boards/$(BOARD)/.),)
 $(error Invalid BOARD specified)
 endif
@@ -47,6 +47,7 @@ INC += -I$(TOP)/lib
 INC += -I$(TOP)/lib/oofatfs
 INC += -I$(TOP)/lib/mp-readline
 INC += -I$(BUILD)
+INC += -I./esp8266
 INC += -I$(TOP)/lib/cmsis/inc
 INC += -I$(HAL_DIR)
 INC += -I$(HAL_DIR)/drivers
@@ -71,7 +72,7 @@ INC += -I./omv/nn
 #INC += -I$(USBHOST_DIR)
 
 CFLAGS_CORTEX_M4 = -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard -fsingle-precision-constant -Wdouble-promotion -mtune=cortex-m4 -mcpu=cortex-m4
-CFLAGS_CORTEX_M7 = -mthumb -DCPU_MIMXRT1052DVL6A -g -DARM_MATH_CM7 -DMCU_SERIES_RT105 -fno-common -ffunction-sections -fdata-sections -ffreestanding -fno-builtin -mfpu=fpv5-d16 -mfloat-abi=hard -fsingle-precision-constant -Wdouble-promotion -mtune=cortex-m7 -mcpu=cortex-m7
+CFLAGS_CORTEX_M7 = -mthumb -DCPU_MIMXRT1052DVL6A -g -DARM_MATH_CM7 -DMCU_SERIES_RT105 -fno-common -ffunction-sections -fdata-sections -ffreestanding -fno-builtin -mfpu=fpv5-d16 -mfloat-abi=hard -fsingle-precision-constant -Wdouble-promotion -mtune=cortex-m7 -mcpu=cortex-m7 -DXIP_EXTERNAL_FLASH
 
 CFLAGS = $(INC) -Wpointer-arith -std=gnu99 -g
 CFLAGS += $(CFLAGS_CORTEX_M7) 
@@ -80,8 +81,8 @@ CFLAGS += $(COPT)
 CFLAGS += -DUSB_STACK_BM
 CFLAGS += -DUSB_DEVICE_CONFIG_BUFFER_PROPERTY_CACHEABLE=1
 CFLAGS += -DFSL_SDK_ENABLE_DRIVER_CACHE_CONTROL=1
-CFLAGS += -D__FPU_PRESENT=1
-
+CFLAGS += -D__FPU_PRESENT=1 -fno-strict-aliasing -MMD
+CFLAGS += -D__BYTE_ORDER__="__ORDER_LITTLE_ENDIAN__"
 ifeq ($(BOARD), omvrt1)
 CFLAGS += -DBOARD_OMVRT1
 else
@@ -92,7 +93,7 @@ LDFLAGS = -L $(LD_DIR) -T $(LD_FILE) -Xlinker -Map=$(@:.elf=.map) -Xlinker --cre
 LIBS = $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
 
 CFLAGS += -fdata-sections -ffunction-sections
-LDFLAGS += -Xlinker --gc-sections
+LDFLAGS += -Xlinker --gc-sections -mabi=aapcs-linux
 
 # Debugging/Optimization
 ifeq ($(DEBUG), 1)
@@ -101,6 +102,12 @@ COPT = -O0
 else
 COPT += -Os -DNDEBUG
 endif
+
+SRC_ESP8266 = $(addprefix esp8266/,\
+		at_cmd.c \
+		esp8266.c \
+		esp8266_py.c\
+)
 
 SRC_LIB = $(addprefix lib/,\
 	libc/string0.c \
@@ -111,6 +118,68 @@ SRC_LIB = $(addprefix lib/,\
 	timeutils/timeutils.c \
 	utils/pyexec.c \
 	utils/interrupt_char.c \
+	cmsis/dsp/CommonTables/arm_common_tables.c   \
+	cmsis/dsp/CommonTables/arm_const_structs.c   \
+	cmsis/dsp/FastMathFunctions/arm_cos_f32.c    \
+	cmsis/dsp/FastMathFunctions/arm_cos_q15.c    \
+	cmsis/dsp/FastMathFunctions/arm_cos_q31.c    \
+	cmsis/dsp/FastMathFunctions/arm_sin_f32.c    \
+	cmsis/dsp/FastMathFunctions/arm_sin_q15.c     \
+	cmsis/dsp/FastMathFunctions/arm_sin_q31.c    \
+	cmsis/dsp/FastMathFunctions/arm_sqrt_q15.c    \
+	cmsis/dsp/FastMathFunctions/arm_sqrt_q31.c     \
+	cmsis/dsp/MatrixFunctions/arm_mat_add_f32.c     \
+	cmsis/dsp/MatrixFunctions/arm_mat_add_q15.c         \
+	cmsis/dsp/MatrixFunctions/arm_mat_add_q31.c      \
+	cmsis/dsp/MatrixFunctions/arm_mat_cmplx_mult_f32.c  \
+	cmsis/dsp/MatrixFunctions/arm_mat_cmplx_mult_q15.c  \
+	cmsis/dsp/MatrixFunctions/arm_mat_cmplx_mult_q31.c  \
+	cmsis/dsp/MatrixFunctions/arm_mat_init_f32.c     \
+	cmsis/dsp/MatrixFunctions/arm_mat_init_q15.c  \
+	cmsis/dsp/MatrixFunctions/arm_mat_init_q31.c   \
+	cmsis/dsp/MatrixFunctions/arm_mat_inverse_f32.c\
+	cmsis/dsp/MatrixFunctions/arm_mat_inverse_f64.c\
+	cmsis/dsp/MatrixFunctions/arm_mat_mult_f32.c\
+	cmsis/dsp/MatrixFunctions/arm_mat_mult_fast_q15.c\
+	cmsis/dsp/MatrixFunctions/arm_mat_mult_fast_q31.c\
+	cmsis/dsp/MatrixFunctions/arm_mat_mult_q15.c      \
+	cmsis/dsp/MatrixFunctions/arm_mat_mult_q31.c  \
+	cmsis/dsp/MatrixFunctions/arm_mat_scale_f32.c  \
+	cmsis/dsp/MatrixFunctions/arm_mat_scale_q15.c   \
+	cmsis/dsp/MatrixFunctions/arm_mat_scale_q31.c   \
+	cmsis/dsp/MatrixFunctions/arm_mat_sub_f32.c   \
+	cmsis/dsp/MatrixFunctions/arm_mat_sub_q15.c   \
+	cmsis/dsp/MatrixFunctions/arm_mat_sub_q31.c   \
+	cmsis/dsp/MatrixFunctions/arm_mat_trans_f32.c  \
+	cmsis/dsp/MatrixFunctions/arm_mat_trans_q15.c   \
+	cmsis/dsp/MatrixFunctions/arm_mat_trans_q31.c\
+	cmsis/nn/NNSupportFunctions/arm_nntables.c        \
+	cmsis/nn/NNSupportFunctions/arm_q7_to_q15_no_shift.c\
+	cmsis/nn/NNSupportFunctions/arm_q7_to_q15_reordered_no_shift.c\
+	cmsis/nn/ConvolutionFunctions/arm_nn_mat_mult_kernel_q7_q15.c\
+	cmsis/nn/ConvolutionFunctions/arm_convolve_HWC_q15_fast.c\
+	cmsis/nn/ConvolutionFunctions/arm_nn_mat_mult_kernel_q7_q15_reordered.c\
+	cmsis/nn/ConvolutionFunctions/arm_convolve_HWC_q7_fast.c\
+	cmsis/nn/ConvolutionFunctions/arm_convolve_HWC_q7_RGB.c\
+	cmsis/nn/ConvolutionFunctions/arm_convolve_HWC_q7_basic.c\
+	cmsis/nn/ConvolutionFunctions/arm_convolve_HWC_q7_fast_nonsquare.c\
+	cmsis/nn/ConvolutionFunctions/arm_convolve_1x1_HWC_q7_fast_nonsquare.c\
+	cmsis/nn/ConvolutionFunctions/arm_depthwise_separable_conv_HWC_q7_nonsquare.c\
+	cmsis/nn/ConvolutionFunctions/arm_convolve_HWC_q15_basic.c\
+	cmsis/nn/ConvolutionFunctions/arm_depthwise_separable_conv_HWC_q7.c\
+	cmsis/nn/SoftmaxFunctions/arm_softmax_q7.c\
+	cmsis/nn/SoftmaxFunctions/arm_softmax_q15.c\
+	cmsis/nn/ActivationFunctions/arm_nn_activations_q7.c\
+	cmsis/nn/ActivationFunctions/arm_relu_q7.c\
+	cmsis/nn/ActivationFunctions/arm_relu_q15.c\
+	cmsis/nn/ActivationFunctions/arm_nn_activations_q15.c\
+	cmsis/nn/FullyConnectedFunctions/arm_fully_connected_q15_opt.c\
+	cmsis/nn/FullyConnectedFunctions/arm_fully_connected_q7.c\
+	cmsis/nn/FullyConnectedFunctions/arm_fully_connected_mat_q7_vec_q15.c\
+	cmsis/nn/FullyConnectedFunctions/arm_fully_connected_mat_q7_vec_q15_opt.c\
+	cmsis/nn/FullyConnectedFunctions/arm_fully_connected_q15.c\
+	cmsis/nn/FullyConnectedFunctions/arm_fully_connected_q7_opt.c\
+	cmsis/nn/PoolingFunctions/arm_pool_q7_HWC.c\
 	)
 
 ifeq ($(MICROPY_FLOAT_IMPL),double)
@@ -214,15 +283,10 @@ SRC_OMV = $(addprefix omv/,  \
 	ff_wrapper.c  \
 	ini.c  \
 	umm_malloc.c  \
-	)
-#	mt9v034.c \
-#   ov9650.c \
-#   ov2640.c \
-#	mathop.c                
-#   draw.c  
-#	line.c                  
-#	cifar10.c               
-#	cifar10_model.c         
+	mt9v034.c \
+   	ov9650.c \
+   	ov2640.c \
+       )		
 SRC_IMG = $(addprefix omv/img/,   \
 	blob.c                  \
 	qrcode.c                \
@@ -276,9 +340,10 @@ SRC_IMG = $(addprefix omv/img/,   \
 	hog.c                   \
 	lenet.c                 \
 	lenet_model_num.c       \
+	draw.c       		\
    )
 
-SRCS_NN = $(addprefix omv/nn/,    \
+SRC_NN = $(addprefix omv/nn/,    \
 	nn.c                    \
    )
 
@@ -300,6 +365,8 @@ SRC_C = \
 	main.c \
 	main_omv.c  \
 	./mcusdk/system_MIMXRT1052.c \
+	./mcusdk/xip/fsl_flexspi_nor_boot.c \
+	./mcusdk/xip/fsl_flexspi_nor_flash.c \
 	irq.c \
 	pendsv.c \
 	systick.c  \
@@ -450,45 +517,10 @@ SRC_VFS = $(addprefix $(TOP)/extmod/vfs, \
 	_fat_diskio.c \
 	)
 
-ifneq ($(MICROPY_PY_WIZNET5K),0)
-WIZNET5K_DIR=drivers/wiznet5k
-INC += -I$(TOP)/$(WIZNET5K_DIR)
-CFLAGS_MOD += -DMICROPY_PY_WIZNET5K=$(MICROPY_PY_WIZNET5K) -D_WIZCHIP_=$(MICROPY_PY_WIZNET5K)
-SRC_MOD += modnwwiznet5k.c
-SRC_MOD += $(addprefix $(WIZNET5K_DIR)/,\
-	ethernet/w$(MICROPY_PY_WIZNET5K)/w$(MICROPY_PY_WIZNET5K).c \
-	ethernet/wizchip_conf.c \
-	ethernet/socket.c \
-	internet/dns/dns.c \
-	)
-endif
-
-# for CC3000 module
-ifeq ($(MICROPY_PY_CC3K),1)
-CC3000_DIR=drivers/cc3000
-INC += -I$(TOP)/$(CC3000_DIR)/inc
-CFLAGS_MOD += -DMICROPY_PY_CC3K=1
-SRC_MOD += modnwcc3k.c
-SRC_MOD += $(addprefix $(CC3000_DIR)/src/,\
-	cc3000_common.c \
-	evnt_handler.c \
-	hci.c \
-	netapp.c \
-	nvmem.c \
-	security.c \
-	socket.c \
-	wlan.c \
-	ccspi.c \
-	inet_ntop.c \
-	inet_pton.c \
-	patch.c \
-	patch_prog.c \
-	)
-endif
-
 OBJ =
 OBJ += $(PY_O)
 OBJ += $(addprefix $(BUILD)/, $(SRC_LIB:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(SRC_ESP8266:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(DRIVERS_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 
@@ -519,7 +551,7 @@ $(PY_BUILD)/formatfloat.o: COPT += -Os
 $(PY_BUILD)/parsenum.o: COPT += -Os
 $(PY_BUILD)/mpprint.o: COPT += -Os
 
-all: $(BUILD)/firmware.dfu $(BUILD)/firmware.hex
+all: $(BUILD)/firmware.dfu $(BUILD)/firmware.hex  $(BUILD)/firmware.bin
 
 ifneq ($(FROZEN_DIR),)
 # To use frozen source modules, put your .py files in a subdirectory (eg scripts/)
@@ -565,15 +597,14 @@ $(BUILD)/firmware.dfu: $(BUILD)/firmware.elf
 
 $(BUILD)/firmware.hex: $(BUILD)/firmware.elf
 	$(ECHO) "Create $@"
-	$(Q)$(OBJCOPY) -O ihex $< $@
+	$(Q)$(OBJCOPY) -O ihex  -j .boot_hdr -j .interrupts -j .text -j .data -j  .ncache.init -j .ARM.extab -j .ARM -j .ctors -j .dtors -j .preinit_array -j .init_array -j .fini_array  $< $@
 
 $(BUILD)/firmware.elf: $(OBJ)
-#	$(ECHO) "LINK $@"
-#	$(Q)$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
-#	$(Q)$(SIZE) $@
 	$(ECHO) "LINK $@"
 	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -g -o $@ $^ $(LIBS) -lm
 	$(Q)$(SIZE) $@
+$(BUILD)/firmware.bin: $(BUILD)/firmware.elf
+	$(Q)$(OBJCOPY) -O binary -j .boot_hdr -j .interrupts -j .text -j .data -j  .ncache.init -j .ARM.extab -j .ARM -j .ctors -j .dtors -j .preinit_array -j .init_array -j .fini_array  $^ $(BUILD)/firmware.bin
 	
 	
 MAKE_PINS = boards/make-pins.py
@@ -595,7 +626,7 @@ GEN_CDCINF_FILE = $(HEADER_BUILD)/pybcdc.inf
 GEN_CDCINF_HEADER = $(HEADER_BUILD)/pybcdc_inf.h
 
 # List of sources for qstr extraction
-SRC_QSTR += $(SRC_PY) $(SRC_C) $(SRC_MOD) $(SRC_LIB)
+SRC_QSTR += $(SRC_PY) $(SRC_C) $(SRC_MOD) $(SRC_LIB) $(SRC_ESP8266)
 # Append any auto-generated sources that are needed by sources listed in
 # SRC_QSTR
 SRC_QSTR_AUTO_DEPS += $(GEN_CDCINF_HEADER)

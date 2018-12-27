@@ -53,20 +53,24 @@ ENTRY(Reset_Handler)
 
 HEAP_SIZE  = DEFINED(__heap_size__)  ? __heap_size__  : 0x18000;
 STACK_SIZE = DEFINED(__stack_size__) ? __stack_size__ : 0x2000;
-
+ROM_BASE = 0x60000000;
+IVT_BASE = 0x60001000;
+ITCM_SIZE = 32*1024;
+DTCM_SIZE = (512-32)*1024;
+OCRAM_SIZE = 512*1024;
+OMV_MAIN_FB_SIZE = 301*1024; /*301*1024*/
+OMV_FB_ALLOC_SIZE = 83*1024; /*83*1024*/
+OMV_JPEG_FB_SIZE = 32*1024;
 /* Specify the memory areas */
 MEMORY
 {
   m_boot_hdr            (RX)  : ORIGIN = 0x60000000, LENGTH = 0x00002000
-  m_interrupts          (RX)  : ORIGIN = 0x60002000, LENGTH = 0x00000400
-  m_text                (RX)  : ORIGIN = 0x60002400, LENGTH = 0x03FFDC00
+  m_interrupts          (RX)  : ORIGIN = 0x60002000, LENGTH = 0x00000600
+  m_text                (RX)  : ORIGIN = 0x60002600, LENGTH = 0x03FFDC00
   /* below we define ITCM, DTCM, OCRAM, must correspond to FUSE/REG cfg */
-  m_itcm                (RWX)  : ORIGIN = 0x00000000, LENGTH = 0x00020000  
-  m_dtcm_stack          (RWX)  : ORIGIN = 0x20000000, LENGTH = STACK_SIZE
-  m_dtcm                (RWX)  : ORIGIN = 0x20000000 + STACK_SIZE, LENGTH = 0x00020000 - STACK_SIZE
-  m_oram                (RWX)  : ORIGIN = 0x20200000, LENGTH = 0x00040000
-  
-  m_dram                (RW)  : ORIGIN = 0x80000000, LENGTH = 0x02000000
+  m_itcm                (RWX)  : ORIGIN = 0x00000000, LENGTH = ITCM_SIZE 
+  m_dtcm                (RWX)  : ORIGIN = 0x20000000 , LENGTH = DTCM_SIZE
+  m_oram                (RWX)  : ORIGIN = 0x20200000, LENGTH = OCRAM_SIZE
 }
 
 /* Define output sections */
@@ -77,11 +81,11 @@ SECTIONS
         FILL(0xff)
         __boot_hdr_start__ = ABSOLUTE(.) ;
         KEEP(*(.boot_hdr.conf))
-		. = 0x1000;
-		KEEP(*(.boot_hdr.ivt))
-		. = 0x1020;
-		KEEP(*(.boot_hdr.boot_data))
-		. = 0x1030;
+	. = 0x1000;
+	KEEP(*(.boot_hdr.ivt))
+	. = 0x1020;
+	KEEP(*(.boot_hdr.boot_data))
+	. = 0x1030;
         KEEP(*(.boot_hdr.dcd_data))
         __boot_hdr_end__ = ABSOLUTE(.) ;
     } > m_boot_hdr
@@ -97,7 +101,7 @@ SECTIONS
   __VECTOR_RAM = __VECTOR_TABLE;
   __RAM_VECTOR_TABLE_SIZE_BYTES = 0x0;
 
-  /* The program code and other data goes into internal RAM */
+ /* The program code and other data goes into internal RAM */
   .text :
   {
     . = ALIGN(4);
@@ -174,7 +178,6 @@ SECTIONS
     KEEP (*(.init_array*))
     PROVIDE_HIDDEN (__init_array_end = .);
   } > m_text
-
   .fini_array :
   {
     PROVIDE_HIDDEN (__fini_array_start = .);
@@ -185,6 +188,28 @@ SECTIONS
 
   __etext = .;    /* define a global symbol at end of code */
   __DATA_ROM = .; /* Symbol is used by startup for data initialization */
+  PROVIDE(_etext = __DATA_ROM);
+  PROVIDE(_sidata = __DATA_ROM);
+
+  
+  .stack :
+  {
+	. = ALIGN(8);
+	. += STACK_SIZE;
+  } > m_dtcm
+  __StackTop   = .;
+  _stack_top = .;
+  _stack_size = STACK_SIZE;
+  __StackLimit = __StackTop - STACK_SIZE;
+  PROVIDE(__stack = __StackTop);
+
+  .qh_buffer_layout :
+  {
+    . = ALIGN(2048);
+    *(.qh_buffer_2kalign)
+    . = ALIGN(4);
+    __noncachedata_end__ = .;     /* define a global symbol at ncache data end */
+  } > m_dtcm
 
   .data : AT(__DATA_ROM)
   {
@@ -194,25 +219,15 @@ SECTIONS
     *(m_usb_dma_init_data)
     *(.data)                 /* .data sections */
     *(.data*)                /* .data* sections */
+    *(.jpeg_tab*)                /* .data* sections */
     KEEP(*(.jcr*))
     . = ALIGN(4);
     __data_end__ = .;        /* define a global symbol at data end */
-  } > m_dtcm
-  
-  __ram_function_flash_start = __DATA_ROM + SIZEOF(.data); /* Symbol is used by startup for TCM data initialization */
-  
-  .ram_function : AT(__ram_function_flash_start)
-  {
-    . = ALIGN(32);
-    __ram_function_ram_start = .;
-    *(RamFunction)
-    . = ALIGN(128);
-    __ram_function_ram_end = .;
-  } > m_itcm  
+  } > m_dtcm  
+  PROVIDE(_sdata = __data_start__);
+  PROVIDE(_edata = __data_end__);
 
-  __ram_function_size = SIZEOF(.ram_function);
-  
-  __NDATA_ROM = __ram_function_flash_start + SIZEOF(.ram_function);
+  __NDATA_ROM = __DATA_ROM + SIZEOF(.data);
   
   .ncache.init : AT(__NDATA_ROM)
   {
@@ -222,6 +237,7 @@ SECTIONS
     __noncachedata_init_end__ = .;   /* create a global symbol at initialized ncache data end */
   } > m_dtcm
   . = __noncachedata_init_end__;
+  
   .ncache :
   {
     *(NonCacheable)
@@ -232,12 +248,25 @@ SECTIONS
   __DATA_END = __NDATA_ROM + (__noncachedata_init_end__ - __noncachedata_start__);
   text_end = ORIGIN(m_text) + LENGTH(m_text);
   ASSERT(__DATA_END <= text_end, "region m_text overflowed with text and data")
-  .stack :
+
+  FB_SIZE  = 160*1024;
+  FB_ALLOC_SIZE = 13*1024;
+  JPEG_SIZE  = 23*1024;
+  .dtcm_fbs :
   {
-	__StackLimit = .;
-	. += STACK_SIZE;
-	__StackTop = .;
-  } > m_dtcm_stack
+    . = ALIGN(8);
+    _ld_main_fb = .;
+        . += FB_SIZE + FB_ALLOC_SIZE;
+        /* fb_alloc is at the end of FB (with margin) */
+        _ld_fballoc = .;
+        _ld_jpeg_buf = .;
+        . += JPEG_SIZE;
+        . = ALIGN(4);
+  } > m_dtcm
+  PROVIDE(_jpeg_buf = _ld_jpeg_buf);
+  PROVIDE(_fb_base = _ld_main_fb);
+  PROVIDE(_fballoc = _ld_fballoc);
+
   /* Uninitialized data section */
   .bss :
   {
@@ -253,7 +282,10 @@ SECTIONS
     __bss_end__ = .;
     __END_BSS = .;
   } > m_dtcm
+  PROVIDE(_sbss = __START_BSS);
+  PROVIDE(_ebss = __END_BSS);
 
+  PROVIDE(_estack = _stack_top);
   .heap :
   {
     . = ALIGN(8);
@@ -265,17 +297,23 @@ SECTIONS
   } > m_dtcm
 
 
-	.heap2 :
-	{
-		. = ALIGN(8);
-		_vHeap2Base = .;
-		. += 0x20000;
-		_vHeap2Limit = .;
-	} > m_oram
+  .heap2 :
+  {
+    . = ALIGN(8);
+    _vHeap2Base = .;
+    . += 0x20000;
+    _vHeap2Limit = .;
+   } > m_oram
 
   /* Initializes stack on the end of block */
   PROVIDE(__stack = __StackTop);
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
 }
+__StackTop = _estack;
+_ram_start = ORIGIN(m_dtcm);
+_sidata = _ram_start;
+_ram_end = ORIGIN(m_dtcm) + LENGTH(m_dtcm);
+_heap_start = _ebss > _ram_end - 64K ? _ebss : _ram_end - 64K; /* heap starts just after statically allocated memory */
+_heap_end = _ram_end;
 

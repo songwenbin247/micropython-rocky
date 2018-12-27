@@ -351,7 +351,45 @@ zero_itcm:
 				cmp		r0,	r1
 				bne		zero_itcm
 				bx		lr
+    .thumb_func
+    .align 2
+    .globl   TestCchBug
+    .type    TestCchBug, %function
 	
+TestCchBug:              
+                                ldr             R0,     =0x20200000     //The MPU has been programmed to set this address as Write-Through
+                                ldr             R1, =0x20208000
+                                mov             R3,     #0x12
+
+                                // ensure R0 address is in cache (The address of interest must be in the cache)
+                                ldr             R2,     [R0]
+                                ldr             R2,     [R0]
+                                ldr             R2,     [R0]
+                                ldr             R2,     [R0]
+                                ldr             R2,     [R0]
+                                ldr             R2,     [R0]
+                                ldr             R2,     [R0]
+                                ldr             R2,     [R0]
+
+                                // A Write-Through store to the same doubleword as the address of interest
+                                strd    R3,R2,  [R0]
+                                mov             R3,     #0x34
+                                // initiate another cache line fill (to a different cacheline to the address of interest) that allocates to the same set as    the address of interest
+                                ldr             R2,     [R1]
+
+                                // A store to the address of interest
+                                str             R3,     [R0]
+
+                                //A load to the address of interest
+                                ldr             R3,     [R0]
+                                //In certain timing conditions, R3 will not be 0x34 (If certain specific timing conditions are met, the load will get the data from the first store, or from what was in the cache at the start of the sequence instead of the data from the second store)
+                                cmp             R3,     #0x34
+                                ite             EQ
+                                moveq   R0,     #0
+                                movne   R0,     #1
+                                bx              LR
+
+
 
     .thumb_func
     .align 2

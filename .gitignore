@@ -2,3 +2,6 @@
 *.d
 ports/prj_keil_rt1060/Objects/
 ports/nxp_rt1050_60/build-imxrtevk105x/genhdr/
+ports/nxp_rt1050_60/build-omvrt1
+*.P
+orts/nxp_rt1050_60/build-imxrtevk105x/
