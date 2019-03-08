@@ -37,4 +37,5 @@ void esp8266_disconnect_client(void);
 
 void esp8266_disconnect_wifi(void);
 void esp8266_reset(void);
+void wait_send_done();
 #endif

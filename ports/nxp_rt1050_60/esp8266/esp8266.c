@@ -48,17 +48,24 @@ edma_handle_t g_lpuartRxEdmaHandle;
 lpuart_config_t g_lpuartConfig;
 uint8_t g_rxRingBuffer[RX_RING_BUFFER_SIZE] = {0}; /* RX ring buffer. */
 size_t recv_done = 0;
+int send_done = 0;
+
 /*******************************************************************************
  * Prototypes
  ******************************************************************************/
 /* LPUART AT callback  */
 static void LPUART_AT_Callback(LPUART_Type *base, lpuart_handle_t *handle, status_t status, void *at_Data)
 {
-	
-	   if (kStatus_LPUART_RxIdle == status)
+    if (kStatus_LPUART_RxIdle == status)
     {
          recv_done = handle->txDataSizeAll;
     }
+    if (kStatus_LPUART_TxIdle == status)
+    {
+    	send_done = 1;
+    }
+
+
 //    struct esp_Data_t esp_dat = (struct esp_Data_t *)at_Data;
 //		if (esp_dat->user_handle) {
 //			esp_dat->user_handle(status, esp_dat->userData);
@@ -292,7 +299,13 @@ void esp8266_at_send(void *buf, size_t size)
     lpuart_transfer_t xfer;  
 	  xfer.data = buf;
     xfer.dataSize = size;
+    send_done = 0;
     LPUART_TransferSendNonBlocking(AT_LPUART, &g_lpuartHandle, &xfer);
+}
+
+void wait_send_done()
+{
+	while(!send_done);
 }
 
 /*!

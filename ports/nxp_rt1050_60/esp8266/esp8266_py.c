@@ -21,6 +21,7 @@ typedef enum {
 	REQUEST_IDLE = 0,
 	REQUEST_PICTURE = 1,
 	REQUEST_COORDINATE = 2,
+	SENDING = 3,
 } action_t;
 
 
@@ -290,20 +291,18 @@ void string_send()
 	self->tx_next	= NULL;
 	self->action_next = REQUEST_IDLE;	
 }
-char buf[68];
+char buf[64];
 STATIC mp_obj_t send_a_string(mp_obj_t str_obj )
 {
     const char *string;	
-	  size_t len;
+    size_t len;
 	   
-		string = mp_obj_str_get_str(str_obj); 
+	string = mp_obj_str_get_str(str_obj); 
     len = strlen(string);			
- 
-    strcpy((void*)((int32_t)((char *)buf + 3) & ~0x3), string);			
-		self->tx_next	= string_send;
-//		DCACHE_CleanByRange(((uint32_t)((char *)buf + 3) & ~0x3), 64);
-		esp8266_at_send((char *)((int32_t)((char *)buf + 3) & ~0x3), len); 		
-	  return mp_const_none;
+    strncpy(buf,string, 64);			
+	wait_send_done();
+	esp8266_at_send(buf, len); 		
+	return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_1(send_a_string_obj, send_a_string);
 
