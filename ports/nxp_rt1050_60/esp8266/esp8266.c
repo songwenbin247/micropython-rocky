@@ -173,7 +173,7 @@ int esp8266_wifi_setup(char *ssid, char *password)
 		AT_CMD_RESET();     // reset ESP8266 
 		
 		if (AT_CMD_AT_TSET()){    // AT Test with echo closed
-			return 1;
+//			return 1;
 		}
 	
 	

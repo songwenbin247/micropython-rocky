@@ -189,7 +189,7 @@ void AT_CMD_RESET()
 	cmd[len + 1] = 0x0A;	
 	esp8266_at_stop_ring();
 	esp8266_at_send(cmd, len+2);
-	delay_ms(500);
+	delay_ms(1000);
 //	esp8266_at_start_ring();
 }
 /*!

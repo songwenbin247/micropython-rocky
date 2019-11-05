@@ -291,7 +291,7 @@ void string_send()
 	self->tx_next	= NULL;
 	self->action_next = REQUEST_IDLE;	
 }
-char buf[64];
+char buf[256];
 STATIC mp_obj_t send_a_string(mp_obj_t str_obj )
 {
     const char *string;	
@@ -299,7 +299,7 @@ STATIC mp_obj_t send_a_string(mp_obj_t str_obj )
 	   
 	string = mp_obj_str_get_str(str_obj); 
     len = strlen(string);			
-    strncpy(buf,string, 64);			
+    strncpy(buf,string, 256);			
 	wait_send_done();
 	esp8266_at_send(buf, len); 		
 	return mp_const_none;
